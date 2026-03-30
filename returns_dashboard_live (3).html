@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Returns Management Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --navy:#0B1426;--navy2:#0F1E3A;--navy3:#162850;
+  --blue:#1E6FD9;--blue2:#3B8BF5;
+  --teal:#00C9A7;--teal2:rgba(0,201,167,0.1);
+  --gold:#F5A623;--green:#22C55E;--purple:#A78BFA;--red2:#E8445A;
+  --text:#E2E8F4;--muted:#7A8BA8;--faint:#3D506A;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);
+  --card:rgba(255,255,255,0.035);--card2:rgba(255,255,255,0.06);
+  --row-sec:rgba(30,111,217,0.1);--row-alt:rgba(255,255,255,0.018);
+}
+body{font-family:'DM Sans',system-ui,sans-serif;background:var(--navy);color:var(--text);min-height:100vh}
+
+/* ── HEADER ─────────────────────────────── */
+.hdr{background:var(--navy2);border-bottom:1px solid var(--border);padding:0 40px;position:sticky;top:0;z-index:100}
+.hdr-in{max-width:1480px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px;gap:16px}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-ico{width:38px;height:38px;background:linear-gradient(135deg,var(--blue),var(--teal));border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0}
+.logo-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.2px}
+.logo-sub{font-size:10px;color:var(--muted);margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.live-pill{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.25);font-size:11px;color:var(--green);font-weight:500;white-space:nowrap}
+.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.sync-time{font-size:11px;color:var(--muted);white-space:nowrap}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;border:none;font-family:inherit;transition:all .15s;white-space:nowrap}
+.btn-p{background:var(--blue);color:#fff}.btn-p:hover{background:var(--blue2);transform:translateY(-1px)}
+.btn-o{background:transparent;color:var(--text);border:1px solid var(--border2)}.btn-o:hover{background:var(--card2)}
+
+/* ── LOADING ─────────────────────────────── */
+#loading{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:75vh;gap:18px}
+.spinner{width:42px;height:42px;border:3px solid var(--border2);border-top-color:var(--blue);border-radius:50%;animation:spin .75s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-txt{font-size:14px;color:var(--muted)}
+.load-sub{font-size:12px;color:var(--faint);text-align:center;max-width:320px}
+
+/* ── ERROR ───────────────────────────────── */
+#error-msg{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:65vh;gap:14px;padding:32px;text-align:center}
+.err-box{background:var(--card);border:1px solid rgba(232,68,90,.25);border-radius:16px;padding:36px;max-width:500px;width:100%}
+.err-ico{font-size:38px;margin-bottom:14px}
+.err-title{font-size:19px;font-weight:600;color:#fff;margin-bottom:8px}
+.err-body{font-size:13px;color:var(--muted);line-height:1.75;margin-bottom:20px}
+.err-steps{background:var(--navy2);border-radius:10px;padding:16px 20px;font-size:12px;color:var(--muted);line-height:2.3;text-align:left;margin-bottom:20px}
+.err-steps b{color:var(--text)}
+.err-btns{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+
+/* ── MAIN ────────────────────────────────── */
+#dashboard{display:none}
+.main{max-width:1480px;margin:0 auto;padding:30px 40px 60px}
+
+/* ── KPI CARDS ───────────────────────────── */
+.kpi-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-bottom:32px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:13px;padding:18px 20px;position:relative;overflow:hidden;transition:background .15s}
+.kpi:hover{background:var(--card2)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--a,var(--blue))}
+.kpi-l{font-size:10px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
+.kpi-v{font-size:23px;font-weight:600;color:#fff;letter-spacing:-.5px;font-family:'DM Mono',monospace}
+.kpi-s{font-size:10px;color:var(--muted);margin-top:5px}
+
+/* ── SECTION TITLE ───────────────────────── */
+.sec{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.9px;margin:0 0 14px;display:flex;align-items:center;gap:10px}
+.sec::after{content:'';flex:1;height:1px;background:var(--border)}
+
+/* ── WEEK FILTER ─────────────────────────── */
+.wf{display:flex;align-items:center;gap:7px;margin-bottom:14px;flex-wrap:wrap}
+.wf-lbl{font-size:11px;color:var(--muted);font-weight:500;margin-right:2px}
+.pill{padding:5px 14px;border-radius:20px;font-size:11px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);transition:all .12s;font-family:inherit}
+.pill.on{background:var(--blue);border-color:var(--blue);color:#fff}
+.pill:hover:not(.on){border-color:var(--blue);color:var(--blue2)}
+
+/* ── TABLE ───────────────────────────────── */
+.twrap{background:var(--card);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:36px}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--navy2);padding:0;font-weight:600;text-align:center;white-space:nowrap}
+.thw{background:var(--navy3);color:var(--blue2);font-size:11px;font-weight:600;padding:10px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-width:90px;letter-spacing:.3px}
+.thwt{background:rgba(0,201,167,.1);color:var(--teal);font-size:11px;font-weight:600;padding:10px 12px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);min-width:90px}
+.ths{color:var(--muted);font-size:9.5px;font-weight:500;padding:6px 9px;border-right:1px solid var(--border);min-width:82px}
+.thl{text-align:left;color:#fff;font-size:12px;padding:10px 18px;min-width:210px;background:var(--navy2)}
+tbody tr{border-top:1px solid var(--border);transition:background .1s}
+tbody tr:hover td{background:rgba(255,255,255,.04)!important}
+tbody tr.sh td{background:var(--row-sec)!important}
+tbody tr.alt td:not(.tot){background:var(--row-alt)}
+tbody tr.sp td{background:transparent!important;height:6px;border:none}
+td{padding:10px 10px;text-align:right;border-right:1px solid var(--border);white-space:nowrap;font-family:'DM Mono',monospace;font-size:11.5px;color:var(--text)}
+td.lc{text-align:left;font-family:'DM Sans',sans-serif;font-size:12.5px;padding:10px 18px;color:var(--text)}
+td.lc.b{font-weight:600;color:#fff}
+td.tba{color:var(--gold);font-weight:600;font-family:'DM Sans',sans-serif;font-size:11px;text-align:center}
+td.tot{background:var(--teal2)!important;color:var(--teal);font-weight:600}
+td.z{color:var(--faint)}
+
+/* ── FOOTER ──────────────────────────────── */
+.foot{font-size:11px;color:var(--muted);line-height:2;border-top:1px solid var(--border);padding-top:20px}
+
+@media(max-width:1200px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:768px){.hdr{padding:0 16px}.main{padding:18px 16px 40px}.kpi-grid{grid-template-columns:repeat(2,1fr)}.sync-time{display:none}}
+@media(max-width:480px){.kpi-grid{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-in">
+    <div class="logo">
+      <div class="logo-ico">R</div>
+      <div>
+        <div class="logo-name">Returns Dashboard</div>
+        <div class="logo-sub">Live · Connected to Google Sheets</div>
+      </div>
+    </div>
+    <div class="hdr-right">
+      <div class="live-pill"><span class="ldot"></span>Live Data</div>
+      <span class="sync-time" id="sync-time"></span>
+      <button class="btn btn-o" onclick="loadData()">&#8635; Refresh</button>
+      <button class="btn btn-p" onclick="dlExcel()">&#8659; Download Excel</button>
+    </div>
+  </div>
+</header>
+
+<!-- LOADING -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="load-txt">Connecting to Google Sheets…</div>
+  <div class="load-sub" id="load-sub">Fetching your latest data…</div>
+</div>
+
+<!-- ERROR -->
+<div id="error-msg">
+  <div class="err-box">
+    <div class="err-ico">⚠️</div>
+    <div class="err-title">Sheet could not be loaded</div>
+    <div class="err-body">Make sure your Google Sheet sharing is set correctly:</div>
+    <div class="err-steps">
+      <b>1.</b> Open your Google Sheet<br>
+      <b>2.</b> Click the green <b>Share</b> button (top right)<br>
+      <b>3.</b> Under "General access" — click and select <b>"Anyone with the link"</b><br>
+      <b>4.</b> Make sure it says <b>Viewer</b> next to it<br>
+      <b>5.</b> Click <b>Done</b> — then press Try Again below
+    </div>
+    <div class="err-btns">
+      <button class="btn btn-p" onclick="loadData()">&#8635; Try Again</button>
+      <a href="https://docs.google.com/spreadsheets/d/1TynEx-P_PkGMKjuNjNJunXJhias0xO-h" target="_blank" class="btn btn-o">&#128279; Open Sheet</a>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <div class="main">
+
+    <!-- KPI CARDS -->
+    <div class="kpi-grid" id="kpis"></div>
+
+    <!-- TABLE -->
+    <div class="sec">Returns Summary — Week on Week</div>
+    <div class="wf">
+      <span class="wf-lbl">Filter:</span>
+      <button class="pill on" onclick="fw('all',this)">All Weeks</button>
+      <span id="wk-pills"></span>
+    </div>
+    <div class="twrap">
+      <div class="tscroll">
+        <table id="tbl"></table>
+      </div>
+    </div>
+
+    <div class="foot">
+      <b>Green Return</b> = tags column contains "green return" &nbsp;·&nbsp;
+      <b>Not Received</b> = Receiving column = "Not received" &nbsp;·&nbsp;
+      <b>DN Raised (Carriers)</b> = row has a Carrier Tracking number &nbsp;·&nbsp;
+      <b>Liquidation</b> = Liquidation column = "Yes" &nbsp;·&nbsp;
+      <b>DN Factories</b> = row has a DN Factory reference &nbsp;·&nbsp;
+      <b>TBA</b> = enter manually once debit notes are confirmed
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// YOUR GOOGLE SHEET — already set ✓
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const SHEET_ID  = '1TynEx-P_PkGMKjuNjNJunXJhias0xO-h';
+const SHEET_GID = '1016620804';
+const CSV       = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/export?format=csv&gid=${SHEET_GID}`;
+
+// 4 ways to fetch — tries each one until one works
+const SOURCES = [
+  CSV,
+  `https://corsproxy.io/?${encodeURIComponent(CSV)}`,
+  `https://api.allorigins.win/raw?url=${encodeURIComponent(CSV)}`,
+  `https://thingproxy.freeboard.io/fetch/${CSV}`,
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DASHBOARD ROW LAYOUT
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const ROWS = [
+  {l:'Total Returns Value',    bold:true,  hdr:true },
+  {l:'Green Return'                                 },
+  {l:'Not Received'                                 },
+  {l:null},
+  {l:'A Stock'                                      },
+  {l:'B, C, D Stock'                                },
+  {l:'Not Graded'                                   },
+  {l:null},
+  {l:'DN Raised (Carriers)',   bold:true,  hdr:true },
+  {l:'DN Accepted (A)',        tba:true             },
+  {l:null},
+  {l:'Liquidation Value* (B)', bold:true,  hdr:true },
+  {l:null},
+  {l:'DN Factories',           bold:true,  hdr:true },
+  {l:'DN Accepted (C)',        tba:true             },
+  {l:null},
+  {l:'Recovery Value (A+B+C)', bold:true,  hdr:true },
+  {l:'Recovery %',             pct:true             },
+];
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// PARSE CSV
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function parseCSV(text){
+  return text.split(/\r?\n/).filter(l=>l.trim()).map(line=>{
+    const row=[];let cur='',inQ=false;
+    for(let i=0;i<line.length;i++){
+      const ch=line[i];
+      if(ch==='"'){inQ=!inQ;continue;}
+      if(ch===','&&!inQ){row.push(cur.trim());cur='';continue;}
+      cur+=ch;
+    }
+    row.push(cur.trim());
+    return row;
+  });
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FIND HEADER ROW
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function findHeader(rows){
+  for(let i=0;i<Math.min(rows.length,6);i++){
+    const r=rows[i].map(c=>c.toLowerCase());
+    if(r.some(c=>c.includes('week')||c.includes('cogs')||c.includes('order'))){
+      return{hi:i,ds:i+1};
+    }
+  }
+  return{hi:0,ds:1};
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// MAP COLUMN INDEXES
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function mapCols(headers){
+  const h=headers.map(c=>c.toLowerCase().replace(/_/g,' ').trim());
+  const f=(...terms)=>{for(const t of terms){const i=h.findIndex(c=>c.includes(t));if(i>=0)return i;}return -1;};
+  return{
+    week: f('week number','week'),
+    cogs: f('total cogs','cogs'),
+    sales:f('total sales','sales value'),
+    qty:  f('item quantity','quantity','qty'),
+    tags: f('tags'),
+    recv: f('receiving'),
+    grade:f('grading','grade'),
+    dnfac:f('dn factory'),
+    liq:  f('liquidation'),
+    trk:  f('carrier tracking','tracking'),
+  };
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// CALCULATE SUMMARY FROM RAW ROWS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function calcSummary(rows, cols){
+  const data={};
+  for(const row of rows){
+    const wk=String(row[cols.week]||'').trim().toUpperCase();
+    if(!wk.match(/^W\d+$/)) continue;
+
+    const c = parseFloat(String(row[cols.cogs] ||'0').replace(/[£,\s]/g,''))||0;
+    const s = parseFloat(String(row[cols.sales]||'0').replace(/[£,\s]/g,''))||0;
+    const u = parseFloat(String(row[cols.qty]  ||'1').replace(/[,\s]/g,'')) ||1;
+    const tag  = String(row[cols.tags] ||'').toLowerCase();
+    const rec  = String(row[cols.recv] ||'').toLowerCase().trim();
+    const grd  = String(row[cols.grade]||'').trim().toUpperCase();
+    const liq  = String(row[cols.liq]  ||'').toLowerCase().trim();
+    const trk  = String(row[cols.trk]  ||'').trim();
+    const dnf  = cols.dnfac>=0 ? String(row[cols.dnfac]||'').trim() : '';
+
+    if(!data[wk]) data[wk]={};
+    const W=data[wk];
+    const add=(key,dc,ds,du)=>{if(!W[key])W[key]={c:0,s:0,u:0};W[key].c+=dc;W[key].s+=ds;W[key].u+=du;};
+
+    add('Total Returns Value', c,s,u);
+    if(tag.includes('green return'))     add('Green Return',           c,s,u);
+    if(rec==='not received')             add('Not Received',           c,s,u);
+    if(grd==='A')                        add('A Stock',                c,s,u);
+    if(['B','C','D'].includes(grd))      add('B, C, D Stock',          c,s,u);
+    if(!grd)                             add('Not Graded',             c,s,u);
+    if(trk)                              add('DN Raised (Carriers)',   c,s,u);
+    if(liq==='yes')                      add('Liquidation Value* (B)', c,s,u);
+    if(dnf)                              add('DN Factories',           c,s,u);
+    if(!W['Recovery Value (A+B+C)'])      W['Recovery Value (A+B+C)']={c:0,s:0,u:0};
+  }
+  return data;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// STATE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let AW=[], AD={}, ACW=[];
+const srt=ws=>ws.slice().sort((a,b)=>parseInt(a.slice(1))-parseInt(b.slice(1)));
+const gv=v=>(v===null||v===undefined||typeof v!=='number')?0:v;
+const tot=(l,k)=>ACW.reduce((s,w)=>s+gv(AD[w]?.[l]?.[k]),0);
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FORMAT HELPERS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const fC = n => n===0
+  ? '<td class="z">—</td>'
+  : `<td>£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`;
+
+const fU = n => n===0
+  ? '<td class="z">—</td>'
+  : `<td>${Math.round(n).toLocaleString()}</td>`;
+
+const fT = (n,cur) => n===0
+  ? '<td class="tot z">—</td>'
+  : cur
+    ? `<td class="tot">£${n.toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2})}</td>`
+    : `<td class="tot">${Math.round(n).toLocaleString()}</td>`;
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD KPI CARDS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildKPIs(){
+  const £ = n=>`£${Math.round(n).toLocaleString('en-GB')}`;
+  const cards=[
+    {l:'Total COGS Value',   v:£(tot('Total Returns Value','c')),              s:ACW.length+' week(s) selected',  a:'#1E6FD9'},
+    {l:'Total Sales Value',  v:£(tot('Total Returns Value','s')),              s:'Retail value of returns',        a:'#00C9A7'},
+    {l:'Units Returned',     v:tot('Total Returns Value','u').toLocaleString(),s:'Total items',                    a:'#F5A623'},
+    {l:'DN Raised Carriers', v:£(tot('DN Raised (Carriers)','s')),             s:'Sales value — carrier claims',   a:'#E8445A'},
+    {l:'Green Returns',      v:tot('Green Return','u').toLocaleString(),        s:'Units tagged green return',      a:'#22C55E'},
+    {l:'Not Received',       v:tot('Not Received','u').toLocaleString(),        s:'Units not yet received',         a:'#A78BFA'},
+  ];
+  document.getElementById('kpis').innerHTML = cards.map(k=>
+    `<div class="kpi" style="--a:${k.a}">
+       <div class="kpi-l">${k.l}</div>
+       <div class="kpi-v">${k.v}</div>
+       <div class="kpi-s">${k.s}</div>
+     </div>`
+  ).join('');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD WEEK FILTER PILLS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildPills(){
+  document.getElementById('wk-pills').innerHTML = AW.map(w=>
+    `<button class="pill" onclick="fw('${w}',this)">${w}</button>`
+  ).join('');
+}
+
+function fw(sel,btn){
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  ACW = sel==='all' ? [...AW] : [sel];
+  buildKPIs();
+  buildTable();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// BUILD SUMMARY TABLE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function buildTable(){
+  const nc = ACW.length;
+
+  // Header rows
+  let thead = `<thead>
+    <tr>
+      <th class="thl" rowspan="2">Particulars</th>
+      ${ACW.map(w=>`<th class="thw" colspan="3">${w}</th>`).join('')}
+      <th class="thwt" colspan="3">Total</th>
+    </tr>
+    <tr>
+      ${ACW.map(()=>`<th class="ths">COGS (£)</th><th class="ths">Sales (£)</th><th class="ths">Units</th>`).join('')}
+      <th class="ths" style="background:rgba(0,201,167,.07);color:var(--teal)">COGS (£)</th>
+      <th class="ths" style="background:rgba(0,201,167,.07);color:var(--teal)">Sales (£)</th>
+      <th class="ths" style="background:rgba(0,201,167,.07);color:var(--teal)">Units</th>
+    </tr>
+  </thead>`;
+
+  let body='', ri=0;
+  for(const rd of ROWS){
+    // Spacer
+    if(!rd.l){
+      body+=`<tr class="sp"><td colspan="${1+nc*3+3}" style="padding:0"></td></tr>`;
+      continue;
+    }
+
+    // Week data cells
+    const wCells = ACW.map(w=>{
+      const d = AD[w]?.[rd.l]||{c:0,s:0,u:0};
+      if(rd.tba) return `<td class="tba">TBA</td><td class="tba">TBA</td><td class="tba">TBA</td>`;
+      if(rd.pct) return `<td class="z">0%</td><td class="z">0%</td><td class="z">—</td>`;
+      return fC(gv(d.c)) + fC(gv(d.s)) + fU(gv(d.u));
+    }).join('');
+
+    // Total cells
+    let totCells;
+    if(rd.tba)
+      totCells = `<td class="tot tba">TBA</td><td class="tot tba">TBA</td><td class="tot tba">TBA</td>`;
+    else if(rd.pct)
+      totCells = `<td class="tot z">0%</td><td class="tot z">0%</td><td class="tot z">—</td>`;
+    else
+      totCells = fT(tot(rd.l,'c'),true) + fT(tot(rd.l,'s'),true) + fT(tot(rd.l,'u'),false);
+
+    const rowClass = rd.hdr ? 'sh' : (ri%2===1 ? 'alt' : '');
+    body += `<tr class="${rowClass}">
+      <td class="lc${rd.bold?' b':''}">${rd.l}</td>
+      ${wCells}
+      ${totCells}
+    </tr>`;
+    ri++;
+  }
+
+  document.getElementById('tbl').innerHTML = thead + `<tbody>${body}</tbody>`;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// DOWNLOAD EXCEL
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function dlExcel(){
+  const wb = XLSX.utils.book_new();
+  const rows = [['Particulars',...AW.flatMap(w=>[`${w} COGS`,`${w} Sales`,`${w} Units`]),'Total COGS','Total Sales','Total Units']];
+  for(const rd of ROWS){
+    if(!rd.l){rows.push([]);continue;}
+    const row=[rd.l];
+    for(const w of AW){
+      const d=AD[w]?.[rd.l]||{c:0,s:0,u:0};
+      row.push(rd.tba?'TBA':gv(d.c), rd.tba?'TBA':gv(d.s), rd.tba?'TBA':gv(d.u));
+    }
+    row.push(rd.tba?'TBA':tot(rd.l,'c'), rd.tba?'TBA':tot(rd.l,'s'), rd.tba?'TBA':tot(rd.l,'u'));
+    rows.push(row);
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Returns Summary');
+  XLSX.writeFile(wb, 'Returns_Dashboard.xlsx');
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+// FETCH DATA — tries 4 methods
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+async function tryFetch(url){
+  const res = await fetch(url, {cache:'no-cache'});
+  if(!res.ok) throw new Error('HTTP '+res.status);
+  const text = await res.text();
+  if(text.trim().startsWith('<') || text.toLowerCase().includes('sign in'))
+    throw new Error('Not CSV — sheet may be private');
+  return text;
+}
+
+async function loadData(){
+  document.getElementById('loading').style.display    = 'flex';
+  document.getElementById('dashboard').style.display  = 'none';
+  document.getElementById('error-msg').style.display  = 'none';
+
+  let csv = null;
+
+  for(let i=0; i<SOURCES.length; i++){
+    try{
+      document.getElementById('load-sub').textContent = `Trying connection method ${i+1} of ${SOURCES.length}…`;
+      csv = await tryFetch(SOURCES[i]);
+      break; // success — stop trying
+    }catch(e){
+      console.warn(`Method ${i+1} failed:`, e.message);
+      if(i === SOURCES.length-1){
+        // All methods failed
+        document.getElementById('loading').style.display   = 'none';
+        document.getElementById('error-msg').style.display = 'flex';
+        return;
+      }
+    }
+  }
+
+  // Parse and build
+  try{
+    const rows = parseCSV(csv);
+    if(rows.length < 2) throw new Error('Sheet appears empty');
+
+    const {hi, ds} = findHeader(rows);
+    const cols = mapCols(rows[hi]);
+
+    if(cols.week < 0) throw new Error('No Week Number column found');
+
+    AD  = calcSummary(rows.slice(ds), cols);
+    AW  = srt(Object.keys(AD));
+    ACW = [...AW];
+
+    if(AW.length === 0) throw new Error('No rows with week numbers like W9, W10 found');
+
+    buildPills();
+    buildKPIs();
+    buildTable();
+
+    document.getElementById('sync-time').textContent =
+      'Last synced ' + new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    document.getElementById('loading').style.display   = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+
+  }catch(e){
+    console.error(e);
+    document.getElementById('loading').style.display   = 'none';
+    document.getElementById('error-msg').style.display = 'flex';
+  }
+}
+
+// Start
+loadData();
+</script>
+</body>
+</html>
